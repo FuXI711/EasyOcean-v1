@@ -280,6 +280,7 @@ contract PledgePool is ReentrancyGuard, SafeTransfer, multiSignatureClient{
         uint256 userShare = lendInfo.stakeAmount.mul(calDecimal).div(pool.lendSupply);
         // refundAmount = 总退款金额 * 用户份额
         uint256 refundAmount = (pool.lendSupply.sub(data.settleAmountLend)).mul(userShare).div(calDecimal);
+        
         // 退款操作
         _redeem(msg.sender,pool.lendToken,refundAmount);
         // 更新用户信息
@@ -300,6 +301,9 @@ contract PledgePool is ReentrancyGuard, SafeTransfer, multiSignatureClient{
         // 金额限制
         require(lendInfo.stakeAmount > 0, "claimLend: 不能领取 sp_token"); // 需要用户的质押金额大于0
         require(!lendInfo.hasNoClaim,"claimLend: 不能再次领取"); // 用户不能再次领取
+        require(address(pool.spCoin) != address(0), "SP token not set");
+        require(validSPTokens[address(pool.spCoin)], "Invalid SP token");
+        require(spTokenToPoolId[address(pool.spCoin)] == _pid, "SP token mismatch");
         // 用户份额 = 当前质押金额 / 总金额
         uint256 userShare = lendInfo.stakeAmount.mul(calDecimal).div(pool.lendSupply); 
         // totalSpAmount = settleAmountLend
@@ -323,6 +327,12 @@ contract PledgePool is ReentrancyGuard, SafeTransfer, multiSignatureClient{
         PoolBaseInfo storage pool = poolBaseInfo[_pid];
         PoolDataInfo storage data = poolDataInfo[_pid];
         require(_spAmount > 0, 'withdrawLend: 取款金额为零');
+        require(pool.spCoin.balanceOf(msg.sender) >= _spAmount, "withdrawLend: insufficient spToken balance");
+        
+        require(address(pool.spCoin) != address(0), "SP token not set");
+        require(validSPTokens[address(pool.spCoin)], "Invalid SP token");
+        require(spTokenToPoolId[address(pool.spCoin)] == _pid, "SP token mismatch");
+        require(pool.spCspCoinoin.balanceOf(msg.sender) >= _spAmount, "Insufficient SP balance");
         // 销毁 sp_token
         pool.spCoin.burn(msg.sender,_spAmount);
         // 计算销毁份额
@@ -435,6 +445,9 @@ contract PledgePool is ReentrancyGuard, SafeTransfer, multiSignatureClient{
         // 限制
         require(borrowInfo.stakeAmount > 0, "claimBorrow: 没有索取 jp_token");
         require(!borrowInfo.hasNoClaim,"claimBorrow: 再次索取");
+        require(address(pool.jpCoin) != address(0), "JP token not set");
+        require(validJPTokens[address(pool.jpCoin)], "Invalid JP token");
+        require(jpTokenToPoolId[address(pool.jpCoin)] == _pid, "JP token mismatch");
         // 总 jp 数量 = settleAmountLend * martgageRate
         uint256 totalJpAmount = data.settleAmountLend.mul(pool.martgageRate).div(baseDecimal);
         uint256 userShare = borrowInfo.stakeAmount.mul(calDecimal).div(pool.borrowSupply);
@@ -460,6 +473,11 @@ contract PledgePool is ReentrancyGuard, SafeTransfer, multiSignatureClient{
         PoolDataInfo storage data = poolDataInfo[_pid];
         // 要求提取的金额大于0
         require(_jpAmount > 0, 'withdrawBorrow: withdraw amount is zero');
+        require(address(pool.jpCoin) != address(0), "JP token not set");
+        require(validJPTokens[address(pool.jpCoin)], "Invalid JP token");
+        require(jpTokenToPoolId[address(pool.jpCoin)] == _pid, "JP token mismatch");
+        require(pool.jpCoin.balanceOf(msg.sender) >= _jpAmount, "Insufficient JP balance");
+
         // 销毁jp token
         pool.jpCoin.burn(msg.sender,_jpAmount);
         // jp份额
